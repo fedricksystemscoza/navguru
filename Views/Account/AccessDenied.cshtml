@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Access Denied - NavGuru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            navy: { DEFAULT: '#0A1F44', light: '#132B5C' },
+                            gold: { DEFAULT: '#FFC72C' }
+                        }
+                    }
+                }
+            }
+    </script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+        <h1 class="text-xl font-bold text-navy">Access Denied</h1>
+        <p class="text-sm text-slate-500 mt-2">
+            You don't have permission to view this page. This area is restricted to administrators.
+        </p>
+        <a asp-controller="Home" asp-action="Index"
+           class="inline-block mt-6 bg-gold hover:bg-yellow-500 text-navy font-bold px-6 py-2.5 rounded-xl text-sm transition">
+            Back to Dashboard
+        </a>
+    </div>
+</body>
+</html>

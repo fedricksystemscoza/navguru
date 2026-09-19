@@ -1,0 +1,60 @@
+﻿@model List<NavGuru.Models.SupportResource>
+@{
+    ViewData["Title"] = "Student Support";
+    var grouped = Model.GroupBy(r => r.Category).OrderBy(g => g.Key);
+}
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-navy">Student Support</h1>
+        <p class="text-sm text-slate-500">
+            @Model.Count resource@(Model.Count == 1 ? "" : "s") — help is always available
+        </p>
+    </div>
+
+    <div class="space-y-6">
+        @foreach (var group in grouped)
+        {
+            <div>
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                    <i class="fa-solid fa-tag mr-1"></i>@group.Key
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @foreach (var r in group)
+                    {
+                        <div class="card">
+                            <h3 class="font-bold text-navy text-sm">@r.Title</h3>
+                            <p class="text-xs text-slate-600 mt-1.5">@r.Description</p>
+                            <div class="space-y-1 mt-3 pt-3 border-t border-slate-100">
+                                @if (!string.IsNullOrEmpty(r.ContactEmail))
+                                {
+                                    <a href="mailto:@r.ContactEmail" class="flex items-center gap-2 text-xs text-navy hover:text-gold-dark">
+                                        <i class="fa-solid fa-envelope w-4"></i>@r.ContactEmail
+                                    </a>
+                                }
+                                @if (!string.IsNullOrEmpty(r.ContactPhone))
+                                {
+                                    <a href="tel:@r.ContactPhone" class="flex items-center gap-2 text-xs text-navy hover:text-gold-dark">
+                                        <i class="fa-solid fa-phone w-4"></i>@r.ContactPhone
+                                    </a>
+                                }
+                                @if (!string.IsNullOrEmpty(r.Location))
+                                {
+                                    <p class="flex items-center gap-2 text-xs text-slate-500">
+                                        <i class="fa-solid fa-location-dot w-4"></i>@r.Location
+                                    </p>
+                                }
+                                @if (!string.IsNullOrEmpty(r.Url))
+                                {
+                                    <a href="@r.Url" target="_blank" class="flex items-center gap-2 text-xs text-navy font-semibold hover:text-gold-dark">
+                                        <i class="fa-solid fa-external-link-alt w-4"></i>Visit website
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

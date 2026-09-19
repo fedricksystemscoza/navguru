@@ -1,0 +1,52 @@
+﻿@{
+    ViewData["ModalId"] = "modalSupport";
+    ViewData["ModalTitle"] = "Support";
+    ViewData["ModalIcon"] = "fa-headset";
+    ViewData["ModalContent"] = @"
+        <p>Need help using NavBuddy or navigating your orientation? We're here for you.</p>
+
+        <div class='grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4'>
+            <a href='mailto:support@mandela.ac.za' class='block p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition'>
+                <div class='flex items-center gap-2 mb-1'>
+                    <i class='fa-solid fa-envelope text-navy'></i>
+                    <span class='font-semibold text-navy text-sm'>Email Support</span>
+                </div>
+                <p class='text-xs text-slate-500'>support@mandela.ac.za</p>
+                <p class='text-[11px] text-slate-400 mt-1'>Response within 24 hours</p>
+            </a>
+
+            <a href='tel:+27415041111' class='block p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition'>
+                <div class='flex items-center gap-2 mb-1'>
+                    <i class='fa-solid fa-phone text-navy'></i>
+                    <span class='font-semibold text-navy text-sm'>Call the Help Desk</span>
+                </div>
+                <p class='text-xs text-slate-500'>+27 41 504 1111</p>
+                <p class='text-[11px] text-slate-400 mt-1'>Mon–Fri · 08:00–16:30</p>
+            </a>
+
+            <a href='/Home/Support' class='block p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition'>
+                <div class='flex items-center gap-2 mb-1'>
+                    <i class='fa-solid fa-hand-holding-heart text-navy'></i>
+                    <span class='font-semibold text-navy text-sm'>Support Resources</span>
+                </div>
+                <p class='text-xs text-slate-500'>Counselling, financial aid, and more</p>
+                <p class='text-[11px] text-slate-400 mt-1'>Full list of campus services</p>
+            </a>
+
+            <a href='/Home/CampusMap' class='block p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition'>
+                <div class='flex items-center gap-2 mb-1'>
+                    <i class='fa-solid fa-map-location-dot text-navy'></i>
+                    <span class='font-semibold text-navy text-sm'>Campus Map</span>
+                </div>
+                <p class='text-xs text-slate-500'>Find your way around</p>
+                <p class='text-[11px] text-slate-400 mt-1'>Directions to any building</p>
+            </a>
+        </div>
+
+        <div class='mt-5 p-4 rounded-xl bg-navy/5 border border-navy/10'>
+            <p class='text-xs text-navy'><i class='fa-solid fa-circle-info mr-1'></i>
+            <strong>New here?</strong> Check the FAQ section first — most questions about WiFi, student cards, and registration are already answered.</p>
+        </div>";
+}
+
+@await Html.PartialAsync("_LegalModal")

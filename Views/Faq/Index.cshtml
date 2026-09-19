@@ -1,0 +1,193 @@
+﻿@model NavGuru.ViewModels.FaqPageViewModel
+@{
+    ViewData["Title"] = "Ask NavGuru";
+}
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center text-xl">
+                <i class="fa-solid fa-comment-dots"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-navy">Ask NavGuru</h1>
+                <p class="text-sm text-slate-500">
+                    AI assistant trained on @Model.Faqs.Count approved answers
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="card p-0 overflow-hidden flex flex-col" style="min-height: 600px;">
+
+        <!-- Messages -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+            <!-- Welcome bubble -->
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-full bg-navy text-gold flex items-center justify-center text-sm shrink-0">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-md shadow-sm">
+                    <p class="text-sm text-slate-700">
+                        Hi! I'm NavGuru. Ask me anything about orientation, campus life, or student services.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="border-t border-slate-100 p-4 bg-white">
+            <form id="askForm" class="flex items-center gap-2">
+                <input type="text"
+                       id="questionInput"
+                       placeholder="Type your question..."
+                       autocomplete="off"
+                       class="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold" />
+                <button type="submit"
+                        id="sendBtn"
+                        class="bg-gold hover:bg-yellow-500 text-navy font-bold px-5 py-3 rounded-xl text-sm transition flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span class="hidden sm:inline">Send</span>
+                </button>
+            </form>
+            <p class="text-[10px] text-slate-400 mt-2 text-center">
+                Powered by Groq · answers grounded in approved FAQs only
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const messages = document.getElementById('chatMessages');
+            const form = document.getElementById('askForm');
+            const input = document.getElementById('questionInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const history = [];
+
+            function escapeHtml(s) {
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function scrollBottom() {
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            function addUserMessage(text) {
+                const el = document.createElement('div');
+                el.className = 'flex items-start gap-3 justify-end';
+                el.innerHTML = `
+                        <div class="bg-gold text-navy rounded-2xl rounded-tr-sm px-4 py-3 max-w-md shadow-sm">
+                            <p class="text-sm font-medium">${escapeHtml(text)}</p>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-gold text-navy flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-user"></i>
+                        </div>`;
+                messages.appendChild(el);
+                scrollBottom();
+            }
+
+            function addAssistantMessage(text, meta) {
+                const el = document.createElement('div');
+                el.className = 'flex items-start gap-3';
+                el.innerHTML = `
+                        <div class="w-9 h-9 rounded-full bg-navy text-gold flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-compass"></i>
+                        </div>
+                        <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-md shadow-sm">
+                            <p class="text-sm text-slate-700 whitespace-pre-wrap">${escapeHtml(text)}</p>
+                            ${meta ? `<p class="text-[10px] text-slate-400 mt-2">${meta}</p>` : ''}
+                        </div>`;
+                messages.appendChild(el);
+                scrollBottom();
+            }
+
+            function addTypingIndicator() {
+                const el = document.createElement('div');
+                el.id = 'typingIndicator';
+                el.className = 'flex items-start gap-3';
+                el.innerHTML = `
+                        <div class="w-9 h-9 rounded-full bg-navy text-gold flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-compass"></i>
+                        </div>
+                        <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                            <div class="flex gap-1">
+                                <span class="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></span>
+                                <span class="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style="animation-delay: 0.15s;"></span>
+                                <span class="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style="animation-delay: 0.3s;"></span>
+                            </div>
+                        </div>`;
+                messages.appendChild(el);
+                scrollBottom();
+            }
+
+            function removeTypingIndicator() {
+                const el = document.getElementById('typingIndicator');
+                if (el) el.remove();
+            }
+
+            async function ask(question) {
+                if (!question || question.trim().length < 2) return;
+
+                addUserMessage(question);
+                history.push({ role: 'user', content: question });
+
+                input.value = '';
+                input.disabled = true;
+                sendBtn.disabled = true;
+                sendBtn.classList.add('opacity-50');
+                addTypingIndicator();
+
+                const t0 = performance.now();
+
+                try {
+                    const resp = await fetch('/Faq/Ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question, history: history.slice(0, -1) })
+                    });
+
+                    const data = await resp.json();
+                    const elapsed = Math.round(performance.now() - t0);
+                    removeTypingIndicator();
+
+                    if (!data.success) {
+                        addAssistantMessage(data.message || 'Something went wrong.', null);
+                        return;
+                    }
+
+                    let meta = '';
+                    if (data.usedAi) meta = '✨ AI-generated from approved FAQs · ' + elapsed + 'ms';
+                    else if (data.fallbackReason) meta = '📚 Direct FAQ match';
+
+                    addAssistantMessage(data.answer, meta);
+                    history.push({ role: 'assistant', content: data.answer });
+                } catch (err) {
+                    removeTypingIndicator();
+                    addAssistantMessage('Network error — please try again.', null);
+                    console.error(err);
+                } finally {
+                    input.disabled = false;
+                    sendBtn.disabled = false;
+                    sendBtn.classList.remove('opacity-50');
+                    input.focus();
+                }
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                ask(input.value.trim());
+            });
+
+            input.focus();
+        })();
+    </script>
+}

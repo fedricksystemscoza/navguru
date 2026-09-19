@@ -1,0 +1,110 @@
+﻿@model NavGuru.ViewModels.QrDisplayViewModel
+@{
+    ViewData["Title"] = "Event QR";
+}
+
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <a asp-controller="Admin" asp-action="Orientations"
+       class="text-xs font-semibold text-slate-500 hover:text-navy">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Back to events
+    </a>
+
+    <div class="mt-3 mb-6">
+        <p class="text-gold text-xs font-bold uppercase tracking-wider mb-1">Event Check-In</p>
+        <h1 class="text-2xl font-bold text-navy">@Model.EventTitle</h1>
+        <p class="text-sm text-slate-500 mt-1">
+            <i class="fa-solid fa-location-dot mr-1"></i>@Model.EventLocation
+            <span class="mx-1.5">·</span>
+            <i class="fa-solid fa-clock mr-1"></i>@Model.EventStart.ToString("ddd dd MMM · HH:mm")
+        </p>
+    </div>
+
+    <!-- LIVE COUNTER -->
+    <div class="bg-navy rounded-2xl p-6 text-white mb-4 flex items-center justify-between">
+        <div>
+            <p class="text-gold text-xs font-bold uppercase tracking-wider">Live check-ins</p>
+            <p id="liveCount" class="text-4xl font-bold mt-1">@Model.CheckedInCount</p>
+        </div>
+        <div class="text-right">
+            <div class="inline-flex items-center gap-1.5 text-xs text-white/60">
+                <span id="pulseDot" class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                Updating live
+            </div>
+            <p id="lastUpdate" class="text-[10px] text-white/40 mt-1"></p>
+        </div>
+    </div>
+
+    <!-- QR CODE -->
+    <div class="card text-center">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+            Students scan this code
+        </p>
+        <img src="@Model.QrImage" alt="QR Code"
+             class="mx-auto rounded-xl border-4 border-navy p-2 bg-white"
+             style="max-width: 320px;" />
+
+        <div class="mt-5">
+            <p class="text-xs text-slate-500">Or share this manual code:</p>
+            <div class="mt-2 inline-block bg-slate-100 rounded-lg px-4 py-2 font-mono text-sm font-bold text-navy tracking-wider">
+                @Model.ManualCode
+            </div>
+        </div>
+
+        <p class="text-[11px] text-slate-400 mt-4">
+            Valid: 15 min before start · 30 min after end
+        </p>
+    </div>
+
+    <!-- RECENT CHECK-INS -->
+    <div class="card mt-4">
+        <h2 class="font-bold text-navy mb-3">Recent</h2>
+        <div id="recentList" class="space-y-2">
+            <p class="text-sm text-slate-400 text-center py-4">Waiting for students...</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const eventId = @Model.EventId;
+        let lastCount = @Model.CheckedInCount;
+
+        async function poll() {
+            try {
+                const r = await fetch('/CheckIn/LiveCount?id=' + eventId);
+                const data = await r.json();
+
+                const countEl = document.getElementById('liveCount');
+                countEl.textContent = data.count;
+
+                document.getElementById('lastUpdate').textContent =
+                    'Updated ' + new Date().toLocaleTimeString();
+
+                if (data.recent && data.recent.length > 0) {
+                    document.getElementById('recentList').innerHTML = data.recent.map(x => `
+                            <div class="flex items-center gap-3 text-sm">
+                                <div class="w-8 h-8 rounded-full bg-gold text-navy font-bold flex items-center justify-center text-xs shrink-0">
+                                    ${(x.name || '?').charAt(0)}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-navy truncate">${x.name}</p>
+                                    <p class="text-[11px] text-slate-400">${new Date(x.at).toLocaleTimeString()}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                }
+
+                // Flash the counter if new check-in
+                if (data.count > lastCount) {
+                    countEl.classList.add('text-gold');
+                    setTimeout(() => countEl.classList.remove('text-gold'), 800);
+                }
+                lastCount = data.count;
+            } catch (e) { /* swallow */ }
+        }
+
+        setInterval(poll, 3000);
+        poll();
+    </script>
+}

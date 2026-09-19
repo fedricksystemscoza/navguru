@@ -1,0 +1,445 @@
+﻿@model List<NavGuru.Models.CampusLocation>
+@{
+    ViewData["Title"] = "Campus Map";
+    var grouped = Model.GroupBy(l => l.Category).OrderBy(g => g.Key);
+    var ordered = Model.OrderBy(l => l.Name).ToList();
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-navy">Campus Map</h1>
+            <p class="text-sm text-slate-500">
+                @Model.Count location@(Model.Count == 1 ? "" : "s") · tap a pin for details
+            </p>
+        </div>
+    </div>
+
+    <!-- DIRECTIONS PANEL -->
+    <div class="card mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div class="md:col-span-5">
+                <label class="text-xs font-semibold text-navy">
+                    <i class="fa-solid fa-circle-dot text-green-600 mr-1"></i>From
+                </label>
+                <select id="fromSelect"
+                        class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+                    <option value="">— Select starting point —</option>
+                    @foreach (var l in ordered)
+                    {
+                        <option value="@l.Id">@l.Name@(string.IsNullOrEmpty(l.Address) ? "" : $" — {l.Address}")</option>
+                    }
+                    <option value="__gps__">📍 My current location</option>
+                </select>
+            </div>
+            <div class="md:col-span-5">
+                <label class="text-xs font-semibold text-navy">
+                    <i class="fa-solid fa-location-dot text-red-500 mr-1"></i>To
+                </label>
+                <select id="toSelect"
+                        class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+                    <option value="">— Select destination —</option>
+                    @foreach (var l in ordered)
+                    {
+                        <option value="@l.Id">@l.Name@(string.IsNullOrEmpty(l.Address) ? "" : $" — {l.Address}")</option>
+                    }
+                </select>
+            </div>
+            <div class="md:col-span-2 flex gap-2">
+                <button id="routeBtn" type="button"
+                        class="flex-1 bg-gold hover:bg-yellow-500 text-navy font-bold px-4 py-2 rounded-lg text-sm transition">
+                    <i class="fa-solid fa-route mr-1"></i>Route
+                </button>
+                <button id="clearBtn" type="button"
+                        class="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ROUTE SUMMARY -->
+        <div id="routeSummary" class="hidden mt-4 pt-4 border-t border-slate-100">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                    <div class="w-10 h-10 rounded-lg bg-navy text-gold flex items-center justify-center">
+                        <i class="fa-solid fa-person-walking text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-slate-500">Walking distance</p>
+                        <p id="routeDistance" class="font-bold text-navy text-lg">—</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                    <div class="w-10 h-10 rounded-lg bg-gold text-navy flex items-center justify-center">
+                        <i class="fa-solid fa-clock text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-slate-500">Estimated time</p>
+                        <p id="routeTime" class="font-bold text-navy text-lg">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="routeError" class="hidden bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 mb-3">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                <span id="routeErrorText"></span>
+            </div>
+
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                    <i class="fa-solid fa-list-ol mr-1"></i>Turn-by-turn directions
+                </p>
+                <div id="routeInstructions" class="space-y-1 max-h-64 overflow-y-auto pr-1 rounded-lg border border-slate-100 p-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- MAP -->
+        <div class="lg:col-span-3 card p-0 overflow-hidden">
+            <div id="campusMap" style="height: 600px;"></div>
+        </div>
+
+        <!-- SIDEBAR -->
+        <div class="space-y-4">
+            @foreach (var group in grouped)
+            {
+                <div class="card p-4">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                        @group.Key
+                    </h2>
+                    <div class="space-y-2">
+                        @foreach (var l in group)
+                        {
+                            <button type="button"
+                                    class="w-full text-left flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50 transition group"
+                                    data-id="@l.Id">
+                                <i class="fa-solid @(string.IsNullOrEmpty(l.IconName) ? "fa-location-dot" : l.IconName) text-navy mt-0.5"></i>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-navy group-hover:text-gold-dark truncate">@l.Name</p>
+                                    @if (!string.IsNullOrEmpty(l.Address))
+                                    {
+                                        <p class="text-[11px] text-slate-500 truncate">@l.Address</p>
+                                    }
+                                </div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        if (typeof L === 'undefined') {
+            console.error('[NavGuru] Leaflet is not loaded. Check _Layout.cshtml for the leaflet.js script tag.');
+        } else {
+            (function() {
+                const locations = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(l => new
+                    {
+                        id = l.Id,
+                            name = l.Name,
+                            description = l.Description,
+                            category = l.Category,
+                        lat = l.Latitude,
+                        lng = l.Longitude,
+                            address = l.Address,
+                            hours = l.OpeningHours,
+                            phone = l.ContactPhone,
+                            icon = string.IsNullOrEmpty(l.IconName) ? "fa-location-dot" : l.IconName
+                    })));
+
+                console.log('[NavGuru] Loaded', locations.length, 'locations');
+
+                const defaultCenter = locations.length > 0
+                    ? [locations[0].lat, locations[0].lng]
+                    : [-33.9608, 25.6022];
+
+                const map = L.map('campusMap').setView(defaultCenter, 16);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(map);
+
+                const markers = {};
+                const locationById = {};
+
+                // ---------- PINS ----------
+                locations.forEach(loc => {
+                    locationById[loc.id] = loc;
+
+                    const icon = L.divIcon({
+                        className: 'navguru-pin',
+                        html: `<div style="background:#0A1F44;color:#FFC72C;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);border:2px solid #FFC72C;">
+                                    <i class="fa-solid ${loc.icon}" style="font-size:14px;"></i>
+                                   </div>`,
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    });
+
+                    const popupHtml = `
+                            <div style="min-width:220px;">
+                                <p style="font-weight:700;color:#0A1F44;margin-bottom:4px;">${loc.name}</p>
+                                ${loc.description ? `<p style="font-size:12px;color:#475569;margin-bottom:6px;">${loc.description}</p>` : ''}
+                                ${loc.address ? `<p style="font-size:11px;color:#64748b;margin:2px 0;"><i class="fa-solid fa-location-dot" style="color:#0A1F44;"></i> ${loc.address}</p>` : ''}
+                                ${loc.hours ? `<p style="font-size:11px;color:#64748b;margin:2px 0;"><i class="fa-solid fa-clock" style="color:#0A1F44;"></i> ${loc.hours}</p>` : ''}
+                                ${loc.phone ? `<p style="font-size:11px;color:#64748b;margin:2px 0;"><i class="fa-solid fa-phone" style="color:#0A1F44;"></i> ${loc.phone}</p>` : ''}
+                                <button type="button"
+                                        onclick="window.__navTo('${loc.id}')"
+                                        style="margin-top:8px;background:#FFC72C;color:#0A1F44;font-weight:700;font-size:11px;padding:6px 10px;border:none;border-radius:6px;cursor:pointer;">
+                                    <i class="fa-solid fa-route"></i> Route here
+                                </button>
+                            </div>`;
+
+                    const m = L.marker([loc.lat, loc.lng], { icon }).addTo(map).bindPopup(popupHtml);
+                    markers[loc.id] = m;
+                });
+
+                // ---------- SIDEBAR ----------
+                document.querySelectorAll('[data-id]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.dataset.id;
+                        const loc = locationById[id];
+                        if (!loc) return;
+                        map.setView([loc.lat, loc.lng], 17);
+                        markers[id].openPopup();
+                    });
+                });
+
+                // ---------- ROUTE STATE ----------
+                let routeLayer = null;
+                let startMarker = null;
+                let endMarker = null;
+
+                const WALKING_SPEED_MPS = 1.25;   // ≈ 4.5 km/h
+
+                function clearRoute() {
+                    try {
+                        if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+                        if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+                        if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+                        if (window.__hereMarker) { map.removeLayer(window.__hereMarker); window.__hereMarker = null; }
+                    } catch (e) {
+                        console.warn('[NavGuru] clearRoute warning:', e);
+                    }
+                    const summary = document.getElementById('routeSummary');
+                    if (summary) summary.classList.add('hidden');
+                    const instr = document.getElementById('routeInstructions');
+                    if (instr) instr.innerHTML = '';
+                    const errBox = document.getElementById('routeError');
+                    if (errBox) errBox.classList.add('hidden');
+                }
+
+                function formatDistance(meters) {
+                    if (meters < 10) return Math.round(meters) + ' m';
+                    if (meters < 950) return (Math.round(meters / 10) * 10) + ' m';
+                    return (meters / 1000).toFixed(2) + ' km';
+                }
+
+                function formatDuration(seconds) {
+                    const mins = Math.round(seconds / 60);
+                    if (mins < 1) return 'Less than 1 min';
+                    if (mins === 1) return '1 min';
+                    if (mins < 60) return mins + ' min';
+                    const h = Math.floor(mins / 60);
+                    const m = mins % 60;
+                    return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+                }
+
+                function haversine(a, b) {
+                    const R = 6371000;
+                    const dLat = (b[0] - a[0]) * Math.PI / 180;
+                    const dLng = (b[1] - a[1]) * Math.PI / 180;
+                    const s = Math.sin(dLat / 2) ** 2 +
+                        Math.cos(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) *
+                        Math.sin(dLng / 2) ** 2;
+                    return 2 * R * Math.asin(Math.sqrt(s));
+                }
+
+                function drawEndpointMarker(latlng, color, label) {
+                    const icon = L.divIcon({
+                        className: 'endpoint-pin',
+                        html: `<div style="background:${color};color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid white;">${label}</div>`,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    return L.marker(latlng, { icon }).addTo(map);
+                }
+
+                async function getRoute(fromLatLng, toLatLng) {
+                    clearRoute();
+
+                    startMarker = drawEndpointMarker(fromLatLng, '#10b981', 'A');
+                    endMarker = drawEndpointMarker(toLatLng, '#ef4444', 'B');
+
+                    const bounds = L.latLngBounds([fromLatLng, toLatLng]);
+                    map.fitBounds(bounds, { padding: [80, 80] });
+
+                    document.getElementById('routeSummary').classList.remove('hidden');
+                    document.getElementById('routeDistance').textContent = '…';
+                    document.getElementById('routeTime').textContent = '…';
+                    document.getElementById('routeInstructions').innerHTML =
+                        '<p class="text-xs text-slate-400 text-center py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Finding walking route…</p>';
+
+                    const url = `https://router.project-osrm.org/route/v1/foot/${fromLatLng[1]},${fromLatLng[0]};${toLatLng[1]},${toLatLng[0]}?overview=full&geometries=geojson&steps=true`;
+
+                    console.log('[NavGuru] Requesting route:', url);
+
+                    try {
+                        const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+                        const data = await resp.json();
+                        if (!data.routes || data.routes.length === 0) throw new Error('No routes returned');
+
+                        const route = data.routes[0];
+                        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                        console.log('[NavGuru] Route received:', route.distance, 'm');
+
+                        const lineNavy = L.polyline(coords, { color: '#0A1F44', weight: 8, opacity: 0.9 });
+                        const lineGold = L.polyline(coords, { color: '#FFC72C', weight: 4, opacity: 1 });
+                        routeLayer = L.layerGroup([lineNavy, lineGold]).addTo(map);
+
+                        const walkSeconds = route.distance / WALKING_SPEED_MPS;
+
+                        document.getElementById('routeDistance').textContent = formatDistance(route.distance);
+                        document.getElementById('routeTime').textContent = formatDuration(walkSeconds);
+
+                        const instructions = document.getElementById('routeInstructions');
+                        instructions.innerHTML = '';
+
+                        if (route.legs && route.legs[0] && route.legs[0].steps) {
+                            route.legs[0].steps.forEach((step, i) => {
+                                const dist = step.distance;
+                                const maneuver = step.maneuver || {};
+                                const type = maneuver.type || 'continue';
+                                const modifier = maneuver.modifier || '';
+
+                                let text;
+                                if (type === 'depart') {
+                                    text = step.name ? `Start walking along ${step.name}` : 'Start walking';
+                                } else if (type === 'arrive') {
+                                    text = 'Arrive at destination';
+                                } else if (type === 'turn' || type === 'new name') {
+                                    text = modifier
+                                        ? `Turn ${modifier}${step.name ? ` onto ${step.name}` : ''}`
+                                        : `Continue${step.name ? ` along ${step.name}` : ''}`;
+                                } else if (type === 'roundabout' || type === 'rotary') {
+                                    text = `At the roundabout, continue${step.name ? ` onto ${step.name}` : ''}`;
+                                } else if (type === 'merge') {
+                                    text = `Merge${modifier ? ` ${modifier}` : ''}${step.name ? ` onto ${step.name}` : ''}`;
+                                } else if (type === 'fork') {
+                                    text = `Keep ${modifier || 'straight'}${step.name ? ` onto ${step.name}` : ''}`;
+                                } else {
+                                    text = step.name ? `Continue along ${step.name}` : `Continue ${modifier}`.trim();
+                                }
+
+                                const div = document.createElement('div');
+                                div.className = 'flex items-start gap-3 py-2 text-sm border-b border-slate-100 last:border-0';
+                                div.innerHTML = `
+                                        <div class="w-6 h-6 rounded-full bg-navy text-gold flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">${i + 1}</div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-slate-700 font-medium">${text}</p>
+                                            ${dist > 0 ? `<p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-arrow-right mr-1"></i>${formatDistance(dist)}</p>` : ''}
+                                        </div>
+                                    `;
+                                instructions.appendChild(div);
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('[NavGuru] OSRM failed, using straight-line fallback:', err);
+
+                        routeLayer = L.polyline([fromLatLng, toLatLng], {
+                            color: '#0A1F44', weight: 4, dashArray: '10 8', opacity: 0.85
+                        }).addTo(map);
+
+                        const meters = haversine(fromLatLng, toLatLng);
+                        const walkSeconds = meters / WALKING_SPEED_MPS;
+
+                        document.getElementById('routeDistance').textContent = formatDistance(meters) + ' (straight)';
+                        document.getElementById('routeTime').textContent = formatDuration(walkSeconds);
+                        document.getElementById('routeInstructions').innerHTML =
+                            '<p class="text-xs text-slate-500 py-2"><i class="fa-solid fa-circle-info mr-1"></i>Walking path unavailable — showing straight-line estimate.</p>';
+                        document.getElementById('routeError').classList.remove('hidden');
+                        document.getElementById('routeErrorText').textContent = 'Routing service unreachable — showing estimate.';
+                    }
+                }
+
+                // ---------- ROUTE BUTTON ----------
+                document.getElementById('routeBtn').addEventListener('click', async () => {
+                    console.log('[NavGuru] Route clicked');
+                    const fromVal = document.getElementById('fromSelect').value;
+                    const toVal = document.getElementById('toSelect').value;
+
+                    if (!fromVal || !toVal) {
+                        alert('Please select both a starting point and a destination.');
+                        return;
+                    }
+                    if (fromVal === toVal) {
+                        alert('Start and destination must be different.');
+                        return;
+                    }
+
+                    let fromLatLng;
+
+                    if (fromVal === '__gps__') {
+                        if (!navigator.geolocation) {
+                            alert('Geolocation is not supported by your browser.');
+                            return;
+                        }
+                        try {
+                            const pos = await new Promise((resolve, reject) =>
+                                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                    enableHighAccuracy: true, timeout: 8000
+                                })
+                            );
+                            fromLatLng = [pos.coords.latitude, pos.coords.longitude];
+
+                            if (window.__hereMarker) map.removeLayer(window.__hereMarker);
+                            window.__hereMarker = L.marker(fromLatLng, {
+                                icon: L.divIcon({
+                                    className: 'here-pin',
+                                    html: `<div style="background:#10b981;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(16,185,129,.25);"><i class="fa-solid fa-person" style="font-size:12px;"></i></div>`,
+                                    iconSize: [28, 28],
+                                    iconAnchor: [14, 14]
+                                })
+                            }).addTo(map).bindPopup('📍 You are here');
+                        } catch {
+                            alert('Could not access your location. Please pick a campus building instead.');
+                            return;
+                        }
+                    } else {
+                        const fromLoc = locationById[fromVal];
+                        fromLatLng = [fromLoc.lat, fromLoc.lng];
+                    }
+
+                    const toLoc = locationById[toVal];
+                    getRoute(fromLatLng, [toLoc.lat, toLoc.lng]);
+                });
+
+                // ---------- CLEAR BUTTON ----------
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    clearRoute();
+                    document.getElementById('fromSelect').value = '';
+                    document.getElementById('toSelect').value = '';
+                });
+
+                // ---------- ROUTE HERE ----------
+                window.__navTo = function(toId) {
+                    document.getElementById('toSelect').value = toId;
+                    const fromVal = document.getElementById('fromSelect').value;
+                    if (!fromVal) {
+                        document.getElementById('fromSelect').focus();
+                        return;
+                    }
+                    document.getElementById('routeBtn').click();
+                };
+            })();
+        }
+    </script>
+}

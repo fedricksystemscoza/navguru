@@ -1,0 +1,29 @@
+﻿# ---------- Build stage ----------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy csproj and restore (this layer caches well)
+COPY ["NavGuru.csproj", "./"]
+RUN dotnet restore "NavGuru.csproj"
+
+# Copy the rest of the source
+COPY . .
+
+# Publish in Release mode
+RUN dotnet publish "NavGuru.csproj" -c Release -o /app/publish --no-restore
+
+# ---------- Runtime stage ----------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+# Copy the publish output
+COPY --from=build /app/publish .
+
+# Render expects port 8080 on the free tier
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+# Set production environment
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "NavGuru.dll"]

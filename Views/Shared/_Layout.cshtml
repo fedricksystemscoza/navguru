@@ -1,0 +1,368 @@
+@using Microsoft.AspNetCore.Identity
+@using NavGuru.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    var currentUser = SignInManager.IsSignedIn(User)
+        ? await UserManager.GetUserAsync(User)
+        : null;
+    var serverTheme = currentUser?.DarkMode == true ? "dark" : "light";
+}
+
+<!DOCTYPE html>
+<html lang="en" class="h-full" data-theme="@serverTheme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - NavBuddy</title>
+
+    <!-- Apply theme BEFORE Tailwind paints to avoid flash -->
+    <script>
+            (function() {
+                // Priority: cookie (just set) > DB (server) > localStorage
+                function getCookie(name) {
+                    var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+                    return m ? m.pop() : null;
+                }
+
+                var cookieTheme = getCookie('navguru-theme');
+                var serverTheme = '@serverTheme';
+                var saved = localStorage.getItem('navguru-theme');
+
+                var theme = cookieTheme || serverTheme || saved || 'light';
+
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('navguru-theme', theme);
+            })();
+    </script>
+    <!-- Tailwind CDN + config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            navy: { DEFAULT: '#0A1F44', light: '#132B5C', dark: '#061530' },
+                            gold: { DEFAULT: '#FFC72C', dark: '#E0A800' }
+                        }
+                    }
+                }
+            };
+    </script>
+
+    <!-- Icons + custom styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <!-- Leaflet (only loaded once) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="~/js/offline.js" asp-append-version="true"></script>
+</head>
+
+<body class="h-full bg-slate-50 flex flex-col">
+
+    <!-- Offline banner -->
+    <div id="offlineBanner" class="hidden bg-navy text-gold text-sm text-center py-2 font-semibold sticky top-0 z-[60]">
+        <i class="fa-solid fa-wifi-slash mr-1"></i>
+        You're offline — showing cached data
+    </div>
+    <!-- ============ NAV BAR ============ -->
+    <nav class="bg-navy text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+
+                <!-- LEFT: Brand + Nav Links -->
+                <div class="flex items-center gap-8">
+                    <a asp-controller="Home" asp-action="Index" class="flex items-center gap-2 group">
+                        <img src="~/images/navbuddy-logo.png" alt="NavGuru"
+                             class="h-9 w-9 rounded-lg object-contain bg-white/10 p-1"
+                             onerror="this.style.display='none';document.getElementById('navLogoFallback').style.display='flex';" />
+                        <span id="navLogoFallback"
+                              class="hidden bg-gold text-navy w-9 h-9 rounded-lg items-center justify-center text-lg">
+                            <i class="fa-solid fa-compass"></i>
+                        </span>
+                        <span class="font-bold text-lg tracking-tight group-hover:text-gold transition">
+                            NavBuddy
+                        </span>
+                    </a>
+
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <div class="hidden md:flex items-center gap-1">
+                            <a asp-controller="Home" asp-action="Index"
+                               class="px-2.5 py-2 rounded-lg text-sm font-medium hover:bg-navy-light hover:text-gold transition whitespace-nowrap">
+                                <i class="fa-solid fa-house mr-1"></i>Dashboard
+                            </a>
+                            <a asp-controller="Calendar" asp-action="Index"
+                               class="px-2.5 py-2 rounded-lg text-sm font-medium hover:bg-navy-light hover:text-gold transition whitespace-nowrap">
+                                <i class="fa-solid fa-calendar-days mr-1"></i>Calendar
+                            </a>
+                            <a asp-controller="Checklist" asp-action="Index"
+                               class="px-2.5 py-2 rounded-lg text-sm font-medium hover:bg-navy-light hover:text-gold transition whitespace-nowrap">
+                                <i class="fa-solid fa-list-check mr-1"></i>Checklist
+                            </a>
+                            <a asp-controller="Faq" asp-action="Index"
+                               class="px-2.5 py-2 rounded-lg text-sm font-medium hover:bg-navy-light hover:text-gold transition whitespace-nowrap">
+                                <i class="fa-solid fa-circle-question mr-1"></i>FAQ
+                            </a>
+                            <a asp-controller="Home" asp-action="MyQrCodes"
+                               class="px-2.5 py-2 rounded-lg text-sm font-medium hover:bg-navy-light hover:text-gold transition whitespace-nowrap">
+                                <i class="fa-solid fa-qrcode mr-1"></i>My QR
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                <!-- RIGHT: Bell + User dropdown -->
+                <div class="flex items-center gap-3">
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        var displayName = currentUser?.FullName ?? currentUser?.Email ?? "User";
+                        var initials = string.Join("",
+                            displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                       .Take(2)
+                                       .Select(s => s[0])).ToUpper();
+
+                        var unreadCount = 0;
+                        if (currentUser is not null)
+                        {
+                            var db = Context.RequestServices.GetService(typeof(NavGuru.Data.ApplicationDbContext)) as NavGuru.Data.ApplicationDbContext;
+                            if (db is not null)
+                            {
+                                unreadCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                                    .CountAsync(db.Notifications, n => n.UserId == currentUser.Id && !n.IsRead);
+                            }
+                        }
+
+                        <!-- NOTIFICATION BELL -->
+                        <a asp-controller="Home" asp-action="Notifications"
+                           class="relative p-2 rounded-lg hover:bg-navy-light transition"
+                           title="Notifications">
+                            <i class="fa-solid fa-bell text-lg"></i>
+                            @if (unreadCount > 0)
+                            {
+                                <span class="absolute top-0.5 right-0.5 bg-gold text-navy text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                                    @(unreadCount > 9 ? "9+" : unreadCount.ToString())
+                                </span>
+                            }
+                        </a>
+
+                        <!-- USER DROPDOWN -->
+                        <div class="relative group">
+                            <button class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-navy-light transition">
+                                <div class="w-8 h-8 rounded-full bg-gold text-navy font-bold flex items-center justify-center text-xs">
+                                    @initials
+                                </div>
+                                <span class="hidden sm:block text-sm font-medium">@displayName</span>
+                                <i class="fa-solid fa-chevron-down text-xs opacity-60"></i>
+                            </button>
+
+                            <!-- Dropdown menu -->
+                            <div class="absolute right-0 mt-2 w-60 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                <div class="px-4 py-2 border-b border-slate-100">
+                                    <p class="text-xs text-slate-500">Signed in as</p>
+                                    <p class="text-sm font-semibold truncate">@currentUser?.Email</p>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <span class="inline-block mt-1 text-[10px] font-bold bg-navy text-gold px-2 py-0.5 rounded">ADMIN</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-block mt-1 text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">STUDENT</span>
+                                    }
+                                </div>
+
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a asp-controller="Admin" asp-action="Index"
+                                       class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 font-semibold text-navy">
+                                        <i class="fa-solid fa-shield-halved w-4"></i>Admin Portal
+                                    </a>
+                                }
+
+                                <a asp-controller="Account" asp-action="Profile"
+                                   class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">
+                                    <i class="fa-solid fa-user w-4"></i>My Profile
+                                </a>
+                                <a asp-controller="Account" asp-action="Settings"
+                                   class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">
+                                    <i class="fa-solid fa-gear w-4"></i>Settings
+                                </a>
+
+                                <!-- Dark mode toggle -->
+                                <button type="button" id="themeToggle"
+                                        class="w-full flex items-center justify-between gap-2 px-4 py-2 text-sm hover:bg-slate-50">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-moon w-4" id="themeIcon"></i>
+                                        <span id="themeLabel">Dark Mode</span>
+                                    </span>
+                                    <span class="w-9 h-5 rounded-full bg-slate-200 relative transition-colors" id="themeSwitch">
+                                        <span class="absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform" id="themeKnob"></span>
+                                    </span>
+                                </button>
+
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="border-t border-slate-100 mt-1 pt-1">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                        <i class="fa-solid fa-right-from-bracket w-4"></i>Log out
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Account" asp-action="Login"
+                           class="px-4 py-2 rounded-lg text-sm font-semibold bg-gold text-navy hover:bg-gold-dark transition">
+                            Sign In
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="flex-1">
+        @RenderBody()
+    </main>
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="bg-navy text-white/70 text-xs mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-compass text-gold"></i>
+                <span>© @DateTime.Now.Year NavBuddy · Nelson Mandela University</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <button type="button" data-modal-open="modalPrivacy"
+                        class="hover:text-gold transition bg-transparent border-0 cursor-pointer">
+                    Privacy
+                </button>
+                <button type="button" data-modal-open="modalTerms"
+                        class="hover:text-gold transition bg-transparent border-0 cursor-pointer">
+                    Terms
+                </button>
+                <button type="button" data-modal-open="modalSupport"
+                        class="hover:text-gold transition bg-transparent border-0 cursor-pointer">
+                    Support
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Dark mode toggle behavior -->
+    <script>
+            (function() {
+                const toggle = document.getElementById('themeToggle');
+                const icon = document.getElementById('themeIcon');
+                const label = document.getElementById('themeLabel');
+                const knob = document.getElementById('themeKnob');
+                const swtch = document.getElementById('themeSwitch');
+                if (!toggle) return;
+
+                function paint(isDark) {
+                    var theme = isDark ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('navguru-theme', theme);
+                    document.cookie = 'navguru-theme=' + theme + '; path=/; max-age=31536000; samesite=lax';
+                    icon.className = isDark ? 'fa-solid fa-sun w-4' : 'fa-solid fa-moon w-4';
+                    label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+                    knob.style.transform = isDark ? 'translateX(1rem)' : 'translateX(0)';
+                    swtch.classList.toggle('bg-gold', isDark);
+                    swtch.classList.toggle('bg-slate-200', !isDark);
+                }
+
+                paint(document.documentElement.getAttribute('data-theme') === 'dark');
+
+                toggle.addEventListener('click', () => {
+                    const isDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+                    paint(isDark);
+                    fetch('/Account/SetTheme?dark=' + isDark, { method: 'POST' }).catch(() => { });
+                });
+            })();
+    </script>
+    <script>
+            (function () {
+                var banner = document.getElementById('offlineBanner');
+                if (!banner) return;
+
+                function update() {
+                    if (navigator.onLine) {
+                        banner.classList.add('hidden');
+                    } else {
+                        banner.classList.remove('hidden');
+                    }
+                }
+
+                window.addEventListener('online', update);
+                window.addEventListener('offline', update);
+                update();
+            })();
+    </script>
+    <!-- Legal + Support Modals -->
+    @await Html.PartialAsync("_ModalPrivacy")
+    @await Html.PartialAsync("_ModalTerms")
+    @await Html.PartialAsync("_ModalSupport")
+
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+            (function() {
+                // Open modal on button click
+                document.querySelectorAll('[data-modal-open]').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var id = btn.getAttribute('data-modal-open');
+                        var modal = document.getElementById(id);
+                        if (!modal) return;
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                        document.body.style.overflow = 'hidden';   // prevent background scroll
+                    });
+                });
+
+                // Close modal on any [data-modal-close] click (backdrop or X button)
+                document.querySelectorAll('[data-modal-close]').forEach(function(el) {
+                    el.addEventListener('click', function() {
+                        var modal = el.closest('[role="dialog"]');
+                        if (!modal) return;
+                        closeModal(modal);
+                    });
+                });
+
+                // Close modal on ESC key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        document.querySelectorAll('[role="dialog"]:not(.hidden)').forEach(closeModal);
+                    }
+                });
+
+                function closeModal(modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.body.style.overflow = '';
+                }
+            })();
+    </script>
+    <script>
+            (function() {
+                var banner = document.getElementById('offlineBanner');
+                if (!banner) return;
+
+                function update() {
+                    if (navigator.onLine) {
+                        banner.classList.add('hidden');
+                    } else {
+                        banner.classList.remove('hidden');
+                    }
+                }
+
+                window.addEventListener('online', update);
+                window.addEventListener('offline', update);
+                update();
+            })();
+    </script>
+</body>
+</html>

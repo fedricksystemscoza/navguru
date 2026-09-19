@@ -1,0 +1,31 @@
+﻿@{
+    ViewData["ModalId"] = "modalPrivacy";
+    ViewData["ModalTitle"] = "Privacy Policy";
+    ViewData["ModalIcon"] = "fa-shield-halved";
+    ViewData["ModalContent"] = @"
+        <p><strong>Last updated: " + DateTime.Now.ToString("MMMM yyyy") + @"</strong></p>
+
+        <p>NavBuddy is committed to protecting your privacy. This policy explains what information we collect, how we use it, and the choices you have.</p>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Information We Collect</h3>
+        <ul class='list-disc pl-5 space-y-1'>
+            <li><strong>Account information:</strong> your name, student number, email, and faculty.</li>
+            <li><strong>Activity data:</strong> orientation checklist progress, event check-ins, and notification reads.</li>
+            <li><strong>Preferences:</strong> language, notification settings, and theme choice.</li>
+        </ul>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>How We Use It</h3>
+        <ul class='list-disc pl-5 space-y-1'>
+            <li>To personalize your orientation experience.</li>
+            <li>To notify you about events and updates.</li>
+            <li>To help staff support your transition to university.</li>
+        </ul>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Your Rights</h3>
+        <p>You can request access to, correction of, or deletion of your personal information at any time by contacting the Student Services office.</p>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Contact</h3>
+        <p>Questions? Email <a href='mailto:privacy@mandela.ac.za' class='text-navy font-semibold hover:text-gold-dark'>privacy@mandela.ac.za</a>.</p>";
+}
+
+@await Html.PartialAsync("_LegalModal")

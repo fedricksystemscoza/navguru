@@ -1,0 +1,199 @@
+﻿@model NavGuru.ViewModels.CalendarViewModel
+@{
+    ViewData["Title"] = "Calendar";
+
+    var prev = Model.FirstOfMonth.AddMonths(-1);
+    var next = Model.FirstOfMonth.AddMonths(1);
+
+    // Group events by day
+    var eventsByDay = Model.Events
+        .GroupBy(e => e.StartTime.Day)
+        .ToDictionary(g => g.Key, g => g.ToList());
+}
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-navy">Orientation Calendar</h1>
+            <p class="text-sm text-slate-500">@Model.MonthName</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month"
+               class="w-9 h-9 rounded-lg border border-slate-200 hover:border-navy flex items-center justify-center text-navy">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            <a asp-action="Index"
+               class="px-4 h-9 rounded-lg border border-slate-200 hover:border-navy flex items-center text-sm font-semibold text-navy">
+                Today
+            </a>
+            <a asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month"
+               class="w-9 h-9 rounded-lg border border-slate-200 hover:border-navy flex items-center justify-center text-navy">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- MONTH GRID -->
+        <div class="lg:col-span-2 card p-4">
+            <div class="grid grid-cols-7 mb-2">
+                @foreach (var d in new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" })
+                {
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center py-2">@d</div>
+                }
+            </div>
+            <div class="grid grid-cols-7 gap-1">
+                @* Empty cells before the 1st *@
+                @for (int i = 0; i < Model.StartWeekday; i++)
+                {
+                    <div class="aspect-square"></div>
+                }
+
+                @for (int day = 1; day <= Model.DaysInMonth; day++)
+                {
+                    var isToday = day == DateTime.Today.Day &&
+                                  Model.Month == DateTime.Today.Month &&
+                                  Model.Year == DateTime.Today.Year;
+                    var dayEvents = eventsByDay.GetValueOrDefault(day) ?? new List<NavGuru.Models.OrientationEvent>();
+
+                    <div class="aspect-square rounded-lg border @(isToday ? "border-gold bg-gold/10" : "border-slate-100") p-1.5 flex flex-col gap-0.5 overflow-hidden">
+                        <span class="text-xs font-semibold @(isToday ? "text-navy" : "text-slate-700")">@day</span>
+                        @foreach (var ev in dayEvents.Take(2))
+                        {
+                            <button type="button" data-event-id="@ev.Id"
+                                    class="event-chip text-left text-[10px] leading-tight bg-navy text-white rounded px-1.5 py-0.5 truncate hover:bg-navy-light">
+                                @ev.Title
+                            </button>
+                        }
+                        @if (dayEvents.Count > 2)
+                        {
+                            <span class="text-[9px] text-slate-400">+@(dayEvents.Count - 2) more</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- EVENT LIST -->
+        <div class="card">
+            <h2 class="font-bold text-navy mb-3">This Month</h2>
+
+            @if (Model.Events.Count == 0)
+            {
+                <div class="text-center py-8">
+                    <i class="fa-solid fa-calendar-xmark text-3xl text-slate-200 mb-2"></i>
+                    <p class="text-sm text-slate-400">No events this month.</p>
+                </div>
+            }
+            else
+            {
+                <div class="space-y-2 max-h-[32rem] overflow-y-auto">
+                    @foreach (var ev in Model.Events)
+                    {
+                        var checkedIn = Model.MyCheckInEventIds.Contains(ev.Id);
+                        <button type="button" data-event-id="@ev.Id"
+                                class="event-chip w-full text-left p-3 rounded-xl hover:bg-slate-50 border border-slate-100 transition">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-navy text-white flex flex-col items-center justify-center shrink-0">
+                                    <span class="text-[9px] uppercase opacity-80">@ev.StartTime.ToString("MMM")</span>
+                                    <span class="text-sm font-bold leading-none">@ev.StartTime.ToString("dd")</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-sm text-navy truncate">@ev.Title</p>
+                                    <p class="text-xs text-slate-500 truncate">
+                                        <i class="fa-solid fa-clock mr-1"></i>@ev.StartTime.ToString("HH:mm")
+                                    </p>
+                                    <p class="text-xs text-slate-500 truncate">
+                                        <i class="fa-solid fa-location-dot mr-1"></i>@ev.Location
+                                    </p>
+                                </div>
+                                @if (checkedIn)
+                                {
+                                    <i class="fa-solid fa-circle-check text-green-600" title="Checked in"></i>
+                                }
+                                else if (ev.IsMandatory)
+                                {
+                                    <span class="badge badge-navy">Req</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div id="eventModal" class="hidden fixed inset-0 bg-navy/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+        <button type="button" id="closeModal"
+                class="absolute top-3 right-3 w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            const modal = document.getElementById('eventModal');
+            const content = document.getElementById('modalContent');
+
+            function close() { modal.classList.add('hidden'); }
+
+            document.getElementById('closeModal').addEventListener('click', close);
+            modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+            document.querySelectorAll('.event-chip').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const id = el.dataset.eventId;
+                    const res = await fetch(`/Calendar/Details?id=${id}`);
+                    const ev = await res.json();
+
+                    content.innerHTML = `
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-12 h-12 rounded-xl bg-navy text-white flex flex-col items-center justify-center shrink-0">
+                                <span class="text-[10px] uppercase opacity-80">${ev.start.split(' ')[1]}</span>
+                                <span class="text-lg font-bold leading-none">${ev.start.split(' ')[2]}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <h2 class="font-bold text-navy text-lg leading-tight">${ev.title}</h2>
+                                ${ev.isMandatory ? '<span class="badge badge-navy mt-1">Mandatory</span>' : ''}
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-slate-600 mb-4">${ev.description}</p>
+
+                        <div class="space-y-2 text-sm text-slate-600 mb-5">
+                            <p><i class="fa-solid fa-clock w-4 text-navy"></i> ${ev.start} – ${ev.end}</p>
+                            <p><i class="fa-solid fa-location-dot w-4 text-navy"></i> ${ev.location}</p>
+                        </div>
+
+                        <div class="flex gap-2">
+                            ${!ev.checkedIn ? `
+                                <a href="/CheckIn/Scan" class="flex-1 text-center bg-gold hover:bg-yellow-500 text-navy font-bold py-2.5 rounded-xl text-sm transition">
+                                    <i class="fa-solid fa-qrcode mr-1"></i> Check In
+                                </a>
+                            ` : `
+                                <div class="flex-1 text-center bg-green-50 border border-green-200 text-green-700 font-bold py-2.5 rounded-xl text-sm">
+                                    <i class="fa-solid fa-circle-check mr-1"></i> You checked in
+                                </div>
+                            `}
+                            <a href="/Calendar/Export?id=${ev.id}"
+                               class="px-4 bg-navy hover:bg-navy-light text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                <i class="fa-solid fa-calendar-plus"></i>
+                            </a>
+                        </div>
+                    `;
+
+                    modal.classList.remove('hidden');
+                });
+            });
+        })();
+    </script>
+}

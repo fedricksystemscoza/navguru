@@ -1,0 +1,172 @@
+﻿@model NavGuru.ViewModels.Admin.CampusLocationFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Location" : "Add Location";
+    var categories = new[] { "Building", "Service", "Food", "Parking", "Landmark", "Emergency", "Other" };
+}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <a asp-action="CampusMap" class="text-xs font-semibold text-slate-500 hover:text-navy">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Back to map locations
+    </a>
+
+    <h1 class="text-2xl font-bold text-navy mt-3 mb-6">
+        @(isEdit ? "Edit Location" : "Add Campus Location")
+    </h1>
+
+    <form asp-action="@(isEdit ? "EditLocation" : "CreateLocation")" method="post" class="space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div asp-validation-summary="ModelOnly" class="text-red-600 text-xs"></div>
+
+        <div class="card space-y-4">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Basic info</h2>
+
+            <div>
+                <label asp-for="Name" class="text-xs font-semibold text-navy"></label>
+                <input asp-for="Name" placeholder="e.g. Main Library"
+                       class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                <span asp-validation-for="Name" class="text-red-600 text-xs"></span>
+            </div>
+
+            <div>
+                <label asp-for="Description" class="text-xs font-semibold text-navy"></label>
+                <textarea asp-for="Description" rows="2"
+                          class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label asp-for="Category" class="text-xs font-semibold text-navy"></label>
+                    <select asp-for="Category"
+                            class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="IconName" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="IconName" placeholder="fa-book"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+                </div>
+                <div>
+                    <label asp-for="Order" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="Order" type="number" min="0"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label asp-for="Address" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="Address" placeholder="Building, campus"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                </div>
+                <div>
+                    <label asp-for="OpeningHours" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="OpeningHours" placeholder="Mon–Fri · 08:00–17:00"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                </div>
+            </div>
+
+            <div>
+                <label asp-for="ContactPhone" class="text-xs font-semibold text-navy"></label>
+                <input asp-for="ContactPhone" placeholder="+27 41 ..."
+                       class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            </div>
+        </div>
+
+        <div class="card space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Location on map</h2>
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-hand-pointer mr-1"></i>Click the map or drag the pin
+                </p>
+            </div>
+
+            <div id="pickerMap" class="rounded-xl overflow-hidden border border-slate-200" style="height: 320px;"></div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label asp-for="Latitude" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="Latitude" id="latInput" type="number" step="0.00001"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+                    <span asp-validation-for="Latitude" class="text-red-600 text-xs"></span>
+                </div>
+                <div>
+                    <label asp-for="Longitude" class="text-xs font-semibold text-navy"></label>
+                    <input asp-for="Longitude" id="lngInput" type="number" step="0.00001"
+                           class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+                    <span asp-validation-for="Longitude" class="text-red-600 text-xs"></span>
+                </div>
+            </div>
+
+            <label class="flex items-start gap-2 cursor-pointer p-3 rounded-lg bg-slate-50">
+                <input asp-for="IsActive" type="checkbox" class="mt-0.5 rounded" />
+                <div>
+                    <span class="text-sm font-semibold text-navy">@Html.DisplayNameFor(m => m.IsActive)</span>
+                    <p class="text-xs text-slate-500 mt-0.5">Inactive locations are hidden from students.</p>
+                </div>
+            </label>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+            <a asp-action="CampusMap"
+               class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="bg-gold hover:bg-yellow-500 text-navy font-bold px-6 py-2 rounded-xl text-sm transition">
+                @(isEdit ? "Save Changes" : "Add Location")
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            const latInput = document.getElementById('latInput');
+            const lngInput = document.getElementById('lngInput');
+            let lat = parseFloat(latInput.value) || -33.9608;
+            let lng = parseFloat(lngInput.value) || 25.6022;
+
+            const map = L.map('pickerMap').setView([lat, lng], 16);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+
+            function updateInputs(ll) {
+                latInput.value = ll.lat.toFixed(5);
+                lngInput.value = ll.lng.toFixed(5);
+            }
+
+            marker.on('dragend', () => updateInputs(marker.getLatLng()));
+            map.on('click', (e) => {
+                marker.setLatLng(e.latlng);
+                updateInputs(e.latlng);
+            });
+
+            // Sync if user edits the inputs manually
+            latInput.addEventListener('input', () => {
+                const v = parseFloat(latInput.value);
+                if (!isNaN(v)) marker.setLatLng([v, marker.getLatLng().lng]);
+            });
+            lngInput.addEventListener('input', () => {
+                const v = parseFloat(lngInput.value);
+                if (!isNaN(v)) marker.setLatLng([marker.getLatLng().lat, v]);
+            });
+        })();
+    </script>
+}

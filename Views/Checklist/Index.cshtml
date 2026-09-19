@@ -1,0 +1,160 @@
+﻿@model NavGuru.ViewModels.ChecklistViewModel
+@{
+    ViewData["Title"] = "My Checklist";
+}
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-navy">Orientation Checklist</h1>
+        <p class="text-sm text-slate-500 mt-1">Track your progress through orientation week.</p>
+    </div>
+
+    <!-- PROGRESS CARD -->
+    <div class="bg-navy rounded-2xl p-6 text-white mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <p class="text-gold text-xs font-bold uppercase tracking-wider">Progress</p>
+                <p class="text-3xl font-bold mt-1">
+                    <span id="completedCount">@Model.Completed</span>
+                    <span class="text-white/50 text-xl">/ @Model.Total</span>
+                </p>
+            </div>
+            <div class="text-right">
+                <p class="text-4xl font-bold" id="percentLabel">@Model.ProgressPercent%</p>
+            </div>
+        </div>
+        <div class="progress-track bg-white/10">
+            <div id="progressBar" class="progress-fill gold" style="width: @(Model.ProgressPercent)%"></div>
+        </div>
+    </div>
+
+    <!-- ADD ITEM -->
+    <div class="card mb-6">
+        <form id="addForm" class="flex gap-2">
+            @Html.AntiForgeryToken()
+            <input id="newTitle" type="text" placeholder="Add your own item…" maxlength="200"
+                   class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <select id="newCategory"
+                    class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+                <option value="General">General</option>
+                <option value="IT">IT</option>
+                <option value="Academic">Academic</option>
+                <option value="Admin">Admin</option>
+                <option value="Social">Social</option>
+            </select>
+            <button type="submit"
+                    class="bg-gold hover:bg-yellow-500 text-navy font-bold px-4 rounded-lg text-sm transition">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- ITEMS BY CATEGORY -->
+    <div id="checklistContainer" class="space-y-6">
+        @foreach (var group in Model.Items.OrderBy(g => g.Key))
+        {
+            <div class="checklist-group" data-category="@group.Key">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">@group.Key</p>
+                <div class="card p-0 divide-y divide-slate-100">
+                    @foreach (var item in group.Value)
+                    {
+                        <div class="checklist-item flex items-center gap-3 px-4 py-3" data-id="@item.Id">
+                            <button type="button" class="toggle-btn shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition
+                                @(item.IsComplete ? "bg-gold border-gold text-navy" : "border-slate-300 text-transparent hover:border-gold")">
+                                <i class="fa-solid fa-check text-xs"></i>
+                            </button>
+                            <span class="item-title flex-1 text-sm @(item.IsComplete ? "line-through text-slate-400" : "text-navy")">
+                                @item.Title
+                            </span>
+                            <button type="button" class="delete-btn text-slate-300 hover:text-red-500 transition"
+                                    title="Delete">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            const container = document.getElementById('checklistContainer');
+            const addForm = document.getElementById('addForm');
+            const newTitle = document.getElementById('newTitle');
+            const newCategory = document.getElementById('newCategory');
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            function updateProgress(data) {
+                document.getElementById('completedCount').textContent = data.completed;
+                document.getElementById('percentLabel').textContent = data.percent + '%';
+                document.getElementById('progressBar').style.width = data.percent + '%';
+            }
+
+            // TOGGLE
+            container.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.closest('.checklist-item').dataset.id;
+                    const res = await fetch('/Checklist/Toggle?id=' + id, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const title = btn.parentElement.querySelector('.item-title');
+                    if (data.isComplete) {
+                        btn.className = 'toggle-btn shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition bg-gold border-gold text-navy';
+                        title.classList.add('line-through', 'text-slate-400');
+                        title.classList.remove('text-navy');
+                    } else {
+                        btn.className = 'toggle-btn shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition border-slate-300 text-transparent hover:border-gold';
+                        title.classList.remove('line-through', 'text-slate-400');
+                        title.classList.add('text-navy');
+                    }
+                    updateProgress(data);
+                });
+            });
+
+            // DELETE
+            container.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const item = btn.closest('.checklist-item');
+                    if (!confirm('Remove this item?')) return;
+                    const id = item.dataset.id;
+                    const res = await fetch('/Checklist/Delete?id=' + id, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': token }
+                    });
+                    if (!res.ok) return;
+                    item.remove();
+                    location.reload(); // refresh counters
+                });
+            });
+
+            // ADD
+            addForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const title = newTitle.value.trim();
+                if (!title) return;
+
+                const res = await fetch('/Checklist/Add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ title, category: newCategory.value })
+                });
+                if (!res.ok) {
+                    alert('Could not add item.');
+                    return;
+                }
+                location.reload();
+            });
+        })();
+    </script>
+}

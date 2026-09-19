@@ -1,0 +1,75 @@
+﻿@model NavGuru.ViewModels.Admin.EventFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Event" : "New Event";
+}
+
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <a asp-action="Orientations" class="text-xs font-semibold text-slate-500 hover:text-navy">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Back to events
+    </a>
+
+    <h1 class="text-2xl font-bold text-navy mt-3 mb-6">
+        @(isEdit ? "Edit Event" : "Create New Event")
+    </h1>
+
+    <form asp-action="@(isEdit ? "EditEvent" : "CreateEvent")" method="post" class="card space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div asp-validation-summary="ModelOnly" class="text-red-600 text-xs"></div>
+
+        <div>
+            <label asp-for="Title" class="text-xs font-semibold text-navy"></label>
+            <input asp-for="Title"
+                   class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <span asp-validation-for="Title" class="text-red-600 text-xs"></span>
+        </div>
+
+        <div>
+            <label asp-for="Description" class="text-xs font-semibold text-navy"></label>
+            <textarea asp-for="Description" rows="3"
+                      class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"></textarea>
+            <span asp-validation-for="Description" class="text-red-600 text-xs"></span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label asp-for="StartTime" class="text-xs font-semibold text-navy"></label>
+                <input asp-for="StartTime" type="datetime-local"
+                       class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                <span asp-validation-for="StartTime" class="text-red-600 text-xs"></span>
+            </div>
+            <div>
+                <label asp-for="EndTime" class="text-xs font-semibold text-navy"></label>
+                <input asp-for="EndTime" type="datetime-local"
+                       class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                <span asp-validation-for="EndTime" class="text-red-600 text-xs"></span>
+            </div>
+        </div>
+
+        <div>
+            <label asp-for="Location" class="text-xs font-semibold text-navy"></label>
+            <input asp-for="Location"
+                   class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <span asp-validation-for="Location" class="text-red-600 text-xs"></span>
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input asp-for="IsMandatory" type="checkbox" class="rounded" />
+            <span class="text-sm text-slate-700">@Html.DisplayNameFor(m => m.IsMandatory)</span>
+        </label>
+
+        <div class="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <a asp-action="Orientations"
+               class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="bg-gold hover:bg-yellow-500 text-navy font-bold px-6 py-2 rounded-xl text-sm transition">
+                @(isEdit ? "Save Changes" : "Create Event")
+            </button>
+        </div>
+    </form>
+</div>

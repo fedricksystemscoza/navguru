@@ -1,0 +1,97 @@
+﻿@model NavGuru.ViewModels.Admin.StudentFormViewModel
+@{
+    var isEdit = !string.IsNullOrEmpty(Model.Id);
+    ViewData["Title"] = isEdit ? "Edit User" : "Add User";
+    var faculties = new[] { "Science", "Engineering", "Business & Economics", "Health Sciences", "Humanities", "Education", "Law", "Arts", "Other" };
+}
+
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <a asp-action="Students" class="text-xs font-semibold text-slate-500 hover:text-navy">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Back to accounts
+    </a>
+
+    <h1 class="text-2xl font-bold text-navy mt-3 mb-6">
+        @(isEdit ? $"Edit {Model.FullName}" : "Add New User")
+    </h1>
+
+    <form asp-action="@(isEdit ? "EditStudent" : "CreateStudent")" method="post" class="card space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div asp-validation-summary="ModelOnly" class="text-red-600 text-xs"></div>
+
+        <div>
+            <label asp-for="FullName" class="text-xs font-semibold text-navy"></label>
+            <input asp-for="FullName" placeholder="e.g. Alex Smith"
+                   class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <span asp-validation-for="FullName" class="text-red-600 text-xs"></span>
+        </div>
+
+        <div>
+            <label asp-for="Email" class="text-xs font-semibold text-navy"></label>
+            <input asp-for="Email" type="email" placeholder="user@navguru.edu"
+                   class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <span asp-validation-for="Email" class="text-red-600 text-xs"></span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label asp-for="StudentNumber" class="text-xs font-semibold text-navy"></label>
+                <input asp-for="StudentNumber" placeholder="20240001"
+                       class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+                <span asp-validation-for="StudentNumber" class="text-red-600 text-xs"></span>
+            </div>
+            <div>
+                <label asp-for="Faculty" class="text-xs font-semibold text-navy"></label>
+                <select asp-for="Faculty"
+                        class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+                    <option value="">— Select —</option>
+                    @foreach (var f in faculties)
+                    {
+                        <option value="@f">@f</option>
+                    }
+                </select>
+                <span asp-validation-for="Faculty" class="text-red-600 text-xs"></span>
+            </div>
+        </div>
+
+        <div>
+            <label asp-for="Password" class="text-xs font-semibold text-navy">
+                @(isEdit ? "New Password (leave blank to keep current)" : "Password")
+            </label>
+            <input asp-for="Password" type="password"
+                   placeholder="@(isEdit ? "Leave blank to keep current" : "Min 8 chars, 1 digit, 1 uppercase")"
+                   class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            <span asp-validation-for="Password" class="text-red-600 text-xs"></span>
+            @if (isEdit)
+            {
+                <p class="text-xs text-slate-500 mt-1">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Only fill this in if you want to reset the password.
+                </p>
+            }
+        </div>
+
+        <label class="flex items-start gap-2 cursor-pointer p-3 rounded-lg bg-slate-50">
+            <input asp-for="IsAdmin" type="checkbox" class="mt-0.5 rounded" />
+            <div>
+                <span class="text-sm font-semibold text-navy">@Html.DisplayNameFor(m => m.IsAdmin)</span>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Admins can access the admin portal and manage all content. Students only see the student experience.
+                </p>
+            </div>
+        </label>
+
+        <div class="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <a asp-action="Students"
+               class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="bg-gold hover:bg-yellow-500 text-navy font-bold px-6 py-2 rounded-xl text-sm transition">
+                @(isEdit ? "Save Changes" : "Create User")
+            </button>
+        </div>
+    </form>
+</div>

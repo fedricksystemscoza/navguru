@@ -1,0 +1,10 @@
+﻿bin/
+obj/
+.git/
+.github/
+.vs/
+*.user
+*.db
+*.db-shm
+*.db-wal
+appsettings.Development.json

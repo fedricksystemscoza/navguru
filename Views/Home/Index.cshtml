@@ -1,0 +1,354 @@
+@model NavGuru.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+
+    string CountdownText()
+    {
+        if (Model.TimeUntilNextEvent is null) return "";
+        var ts = Model.TimeUntilNextEvent.Value;
+        if (ts.TotalMinutes < 0) return "In progress";
+        if (ts.TotalHours < 1) return $"Starts in {Math.Round(ts.TotalMinutes)} min";
+        if (ts.TotalHours < 24) return $"In {Math.Round(ts.TotalHours)} hours";
+        return $"In {Math.Round(ts.TotalDays)} days";
+    }
+}
+
+<!-- ============ HERO (compact) ============ -->
+<section class="bg-navy text-white relative overflow-hidden">
+    <div class="absolute -right-8 -top-8 text-gold/10 text-[180px] leading-none select-none pointer-events-none">
+        <i class="fa-solid fa-compass"></i>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+        <p class="text-gold text-xs font-bold uppercase tracking-wider mb-1">
+            Student Dashboard
+        </p>
+        <h1 class="text-xl sm:text-2xl font-bold">
+            Welcome back, @Model.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).First() 👋
+        </h1>
+        <p class="text-white/70 text-sm mt-1">
+            @if (!string.IsNullOrEmpty(Model.StudentNumber))
+            {
+                <span>Student #@Model.StudentNumber</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.Faculty))
+            {
+                <span> · @Model.Faculty</span>
+            }
+        </p>
+    </div>
+</section>
+
+<!-- ============ CONTAINED CONTENT ============ -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ===== NEXT UP (half-width, inside the grid) ===== -->
+    @if (Model.NextEvent is not null)
+    {
+        <div class="bg-gradient-to-br from-gold to-yellow-500 rounded-2xl p-6 text-navy relative overflow-hidden mb-6">
+            <div class="absolute -right-6 -bottom-10 text-navy/10 text-[160px] leading-none select-none pointer-events-none">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="relative">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span class="bg-navy text-gold text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                        Next up
+                    </span>
+                    <span class="text-xs font-bold text-navy/80">@CountdownText()</span>
+                    @if (Model.NextEvent.IsMandatory)
+                    {
+                        <span class="bg-navy text-gold text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                            Mandatory
+                        </span>
+                    }
+                </div>
+
+                <h2 class="text-xl sm:text-2xl font-bold">@Model.NextEvent.Title</h2>
+
+                <div class="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 text-sm font-medium">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock"></i>
+                        @Model.NextEvent.StartTime.ToString("ddd, dd MMM · HH:mm")
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot"></i>
+                        @Model.NextEvent.Location
+                    </span>
+                </div>
+
+                <p class="text-sm text-navy/80 mt-3">@Model.NextEvent.Description</p>
+
+                <div class="flex gap-2 mt-4">
+                    <a asp-controller="Calendar" asp-action="Export" asp-route-id="@Model.NextEvent.Id"
+                       class="bg-navy hover:bg-navy-light text-white text-xs font-bold px-3 py-2 rounded-lg transition inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-calendar-plus"></i> Add to Calendar
+                    </a>
+                    <a asp-controller="CheckIn" asp-action="Scan"
+                       class="bg-white/40 hover:bg-white/60 text-navy text-xs font-bold px-3 py-2 rounded-lg transition inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-qrcode"></i> Check In
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ===== STAT CARDS ===== -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+        <div class="card card-hover">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Events</p>
+                    <p class="text-2xl font-bold text-navy leading-tight">@Model.UpcomingEvents.Count</p>
+                    <p class="text-[11px] text-slate-400">upcoming</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-hover">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gold text-navy flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Checklist</p>
+                    <p class="text-2xl font-bold text-navy leading-tight">@Model.ProgressPercent%</p>
+                    <p class="text-[11px] text-slate-400">@Model.ChecklistCompleted of @Model.ChecklistTotal done</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-hover">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-circle-question"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">FAQ</p>
+                    <p class="text-2xl font-bold text-navy leading-tight">@Model.FaqCount</p>
+                    <p class="text-[11px] text-slate-400">answers available</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-hover">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gold text-navy flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Badges</p>
+                    <p class="text-2xl font-bold text-navy leading-tight">@Model.BadgesEarned</p>
+                    <p class="text-[11px] text-slate-400">earned so far</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN GRID ===== -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- LEFT COLUMN -->
+        <div class="lg:col-span-2 space-y-4">
+
+            <!-- Upcoming Events -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-navy">Upcoming Events</h3>
+                    <a asp-controller="Calendar" asp-action="Index"
+                       class="text-xs font-semibold text-navy hover:text-gold-dark">
+                        View all <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+
+                @if (Model.UpcomingEvents.Count == 0)
+                {
+                    <div class="text-center py-8">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-slate-200 mb-2"></i>
+                        <p class="text-sm text-slate-400">No upcoming events yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var ev in Model.UpcomingEvents)
+                        {
+                            <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition group border border-transparent hover:border-slate-200">
+                                <!-- Date bubble -->
+                                <div class="w-12 h-12 rounded-lg bg-navy text-white flex flex-col items-center justify-center shrink-0">
+                                    <span class="text-[10px] uppercase opacity-80">@ev.StartTime.ToString("MMM")</span>
+                                    <span class="text-lg font-bold leading-none">@ev.StartTime.ToString("dd")</span>
+                                </div>
+
+                                <!-- Title + meta -->
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="font-semibold text-sm text-navy truncate">@ev.Title</p>
+                                        @if (ev.IsMandatory)
+                                        {
+                                            <span class="badge badge-navy shrink-0">Req</span>
+                                        }
+                                    </div>
+                                    <p class="text-xs text-slate-500 truncate">
+                                        <i class="fa-solid fa-clock mr-1"></i>@ev.StartTime.ToString("HH:mm")
+                                        <span class="mx-1.5">·</span>
+                                        <i class="fa-solid fa-location-dot mr-1"></i>@ev.Location
+                                    </p>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <a asp-controller="Home" asp-action="EventQr" asp-route-id="@ev.Id"
+                                       class="flex items-center gap-1.5 bg-gold hover:bg-yellow-500 text-navy text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                                       title="Show QR code">
+                                        <i class="fa-solid fa-qrcode"></i> QR
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Recent Notifications -->
+            @if (Model.RecentNotifications.Count > 0)
+            {
+                <div class="card">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-navy">Recent Notifications</h3>
+                        <a asp-controller="Home" asp-action="Notifications"
+                           class="text-xs font-semibold text-navy hover:text-gold-dark">
+                            View all <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                    <div class="space-y-2">
+                        @foreach (var n in Model.RecentNotifications)
+                        {
+                            <div class="flex items-start gap-3 p-3 rounded-xl @(n.IsRead ? "bg-white" : "bg-gold/5 border border-gold/20") transition">
+                                <div class="w-8 h-8 rounded-full @(n.IsRead ? "bg-slate-100 text-slate-400" : "bg-gold text-navy") flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-bell text-xs"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-sm text-navy truncate">@n.Title</p>
+                                    <p class="text-xs text-slate-600 line-clamp-2">@n.Message</p>
+                                    <p class="text-[10px] text-slate-400 mt-1">
+                                        @n.CreatedAt.ToLocalTime().ToString("dd MMM · HH:mm")
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="space-y-4">
+            <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-navy">Your Checklist</h3>
+                    <span class="text-xs font-bold text-navy">@Model.ChecklistCompleted/@Model.ChecklistTotal</span>
+                </div>
+                <div class="progress-track mb-4">
+                    <div class="progress-fill gold" style="width: @(Model.ProgressPercent)%"></div>
+                </div>
+
+                <div class="space-y-2">
+                    @foreach (var item in Model.RecentChecklist)
+                    {
+                        <div class="flex items-start gap-2 text-sm py-1.5">
+                            @if (item.IsComplete)
+                            {
+                                <i class="fa-solid fa-circle-check text-green-600 mt-0.5"></i>
+                                <span class="text-slate-400 line-through flex-1">@item.Title</span>
+                            }
+                            else
+                            {
+                                <i class="fa-regular fa-circle text-slate-300 mt-0.5"></i>
+                                <span class="text-slate-700 flex-1">@item.Title</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <a asp-controller="Checklist" asp-action="Index"
+                   class="block mt-4 text-center bg-navy hover:bg-navy-light text-gold text-xs font-bold py-2 rounded-lg transition">
+                    Manage checklist
+                </a>
+            </div>
+
+            <div class="card">
+                <h3 class="font-bold text-navy mb-3">Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <a asp-controller="CheckIn" asp-action="Scan"
+                       class="flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition group">
+                        <i class="fa-solid fa-qrcode text-navy text-xl group-hover:text-gold-dark transition"></i>
+                        <span class="text-xs font-semibold text-navy">Check In</span>
+                    </a>
+                    <a asp-controller="Faq" asp-action="Index"
+                       class="flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition group">
+                        <i class="fa-solid fa-circle-question text-navy text-xl group-hover:text-gold-dark transition"></i>
+                        <span class="text-xs font-semibold text-navy">Ask FAQ</span>
+                    </a>
+                    <a asp-controller="Home" asp-action="CampusMap"
+                       class="flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition group">
+                        <i class="fa-solid fa-map-location-dot text-navy text-xl group-hover:text-gold-dark transition"></i>
+                        <span class="text-xs font-semibold text-navy">Campus Map</span>
+                    </a>
+                    <a asp-controller="Home" asp-action="Support"
+                       class="flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border border-slate-200 hover:border-gold hover:bg-gold/5 transition group">
+                        <i class="fa-solid fa-hand-holding-heart text-navy text-xl group-hover:text-gold-dark transition"></i>
+                        <span class="text-xs font-semibold text-navy">Support</span>
+                    </a>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        (function () {
+            // ---- Cache the dashboard snapshot ----
+            var snapshot = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+                {
+                        fullName = Model.FullName,
+                        studentNumber = Model.StudentNumber,
+                        faculty = Model.Faculty,
+                        upcomingEvents = Model.UpcomingEvents.Select(e => new
+                    {
+                        id = e.Id,
+                                title = e.Title,
+                                description = e.Description,
+                                location = e.Location,
+                                startTime = e.StartTime.ToString("o"),
+                                endTime = e.EndTime.ToString("o"),
+                                isMandatory = e.IsMandatory
+                    }),
+                        nextEventId = Model.NextEvent != null ? (int?)Model.NextEvent.Id : null,
+                        checklistTotal = Model.ChecklistTotal,
+                        checklistCompleted = Model.ChecklistCompleted,
+                        checklistPercent = Model.ProgressPercent,
+                        checklistItems = Model.RecentChecklist.Select(c => new
+                    {
+                                title = c.Title,
+                                isComplete = c.IsComplete
+                    }),
+                        faqCount = Model.FaqCount,
+                        badgesEarned = Model.BadgesEarned,
+                        unreadNotifications = Model.UnreadNotifications
+                }));
+
+            if (typeof NavGuruCache !== 'undefined') {
+                var ok = NavGuruCache.write('dashboard', snapshot);
+                if (ok) {
+                    console.log('[NavGuru] Dashboard cached at', new Date().toLocaleTimeString());
+                }
+            } else {
+                console.warn('[NavGuru] offline.js not loaded');
+            }
+        })();
+    </script>
+}

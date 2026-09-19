@@ -1,0 +1,140 @@
+﻿@{
+    ViewData["Title"] = "Admin Portal";
+}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- HEADER -->
+    <div class="mb-8">
+        <p class="text-gold text-xs font-bold uppercase tracking-wider mb-1">Administrator Portal</p>
+    </div>
+
+    <!-- TILE GRID -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- 1. Manage Orientations -->
+        <a asp-controller="Admin" asp-action="Orientations"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-compass"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Orientations</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Create, edit, and delete orientation events for new students.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+
+        <!-- 2. Manage FAQ Data -->
+        <a asp-controller="Admin" asp-action="Faqs"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gold text-navy flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage FAQ Data</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                The AI assistant answers only from this approved library.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+
+        <!-- 3. Manage Student Accounts -->
+        <a asp-controller="Admin" asp-action="Students"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-user-graduate"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Student Accounts</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Add students, update details, assign roles, reset passwords.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+
+        <!-- 4. Manage Notifications -->
+        <a asp-controller="Admin" asp-action="Notifications"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gold text-navy flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Notifications</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Send announcements that appear instantly on student dashboards.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+
+        <!-- 5. Manage Campus Calendar Events -->
+      @*   <a asp-controller="Admin" asp-action="Calendar"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Campus Calendar</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Add and update all campus-wide events beyond orientation.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a> *@
+
+        <a asp-controller="Admin" asp-action="CampusMap"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-navy text-gold flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Campus Map</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Add and edit pins for campus buildings, services, and landmarks.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+       
+
+        <!-- 6. Manage Student Support Resource -->
+        <a asp-controller="Admin" asp-action="Resources"
+           class="group bg-white border border-slate-200 rounded-2xl p-6 hover:border-navy hover:shadow-lg transition-all">
+            <div class="w-12 h-12 rounded-xl bg-gold text-navy flex items-center justify-center text-xl mb-4 group-hover:scale-105 transition">
+                <i class="fa-solid fa-hand-holding-heart"></i>
+            </div>
+            <h2 class="font-bold text-navy text-lg">Manage Student Support Resources</h2>
+            <p class="text-xs text-slate-500 mt-1.5">
+                Curate contacts, helplines, and guidance students can reach for help.
+            </p>
+            <span class="inline-flex items-center text-xs font-semibold text-navy mt-4 group-hover:text-gold-dark">
+                Open <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-0.5 transition"></i>
+            </span>
+        </a>
+    </div>
+
+    <!-- OPTIONAL: Stats footer -->
+    <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Events</p>
+            <p class="text-xl font-bold text-navy mt-1" id="stat-events">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Students</p>
+            <p class="text-xl font-bold text-navy mt-1" id="stat-students">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">FAQs</p>
+            <p class="text-xl font-bold text-navy mt-1" id="stat-faqs">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notifications</p>
+            <p class="text-xl font-bold text-navy mt-1" id="stat-notifs">—</p>
+        </div>
+    </div>
+</div>

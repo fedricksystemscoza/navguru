@@ -1,0 +1,103 @@
+﻿@model List<NavGuru.Models.CampusLocation>
+@{
+    ViewData["Title"] = "Manage Campus Map";
+    var grouped = Model.GroupBy(l => l.Category).OrderBy(g => g.Key);
+}
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <a asp-controller="Admin" asp-action="Index"
+       class="text-xs font-semibold text-slate-500 hover:text-navy">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Admin home
+    </a>
+
+    <div class="flex items-center justify-between mt-3 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-navy">Manage Campus Map</h1>
+            <p class="text-sm text-slate-500">
+                @Model.Count location@(Model.Count == 1 ? "" : "s") pinned on the map
+            </p>
+            <p class="text-xs text-slate-400 mt-1">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Students see these pins on their campus map.
+            </p>
+        </div>
+        <a asp-action="CreateLocation"
+           class="bg-gold hover:bg-yellow-500 text-navy font-bold px-4 py-2.5 rounded-xl text-sm transition whitespace-nowrap">
+            <i class="fa-solid fa-map-pin mr-1"></i> Add Location
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <i class="fa-solid fa-check-circle mr-1"></i> @TempData["Success"]
+        </div>
+    }
+
+    @if (Model.Count == 0)
+    {
+        <div class="card text-center py-12">
+            <i class="fa-solid fa-map-location-dot text-4xl text-slate-200 mb-3"></i>
+            <p class="text-sm text-slate-500">No locations yet. Add your first pin.</p>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-6">
+            @foreach (var group in grouped)
+            {
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                        <i class="fa-solid fa-tag mr-1"></i>@group.Key
+                        <span class="text-slate-400 font-normal ml-1">(@group.Count())</span>
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @foreach (var l in group)
+                        {
+                            <div class="card">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-3 flex-1 min-w-0">
+                                        <div class="w-10 h-10 rounded-lg bg-navy/5 text-navy flex items-center justify-center shrink-0">
+                                            <i class="fa-solid @(string.IsNullOrEmpty(l.IconName) ? "fa-location-dot" : l.IconName)"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <h3 class="font-bold text-navy text-sm">@l.Name</h3>
+                                                @if (!l.IsActive)
+                                                {
+                                                    <span class="badge badge-slate">Inactive</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(l.Description))
+                                            {
+                                                <p class="text-xs text-slate-600 mt-1">@l.Description</p>
+                                            }
+                                            <p class="text-[11px] text-slate-400 mt-2 font-mono">
+                                                @l.Latitude.ToString("F5"), @l.Longitude.ToString("F5")
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-1 shrink-0">
+                                        <a asp-action="EditLocation" asp-route-id="@l.Id"
+                                           class="text-xs text-navy hover:text-gold-dark px-2 py-1 rounded-lg border border-slate-200 hover:border-navy">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </a>
+                                        <form asp-action="DeleteLocation" asp-route-id="@l.Id" method="post"
+                                              onsubmit="return confirm('Delete &quot;@l.Name&quot;?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg border border-red-200 w-full">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

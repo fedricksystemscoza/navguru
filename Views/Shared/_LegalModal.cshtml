@@ -1,0 +1,49 @@
+﻿@* Usage: pass "title" via ViewData["ModalTitle"] and content via ViewData["ModalContent"] *@
+@{
+    var modalId = ViewData["ModalId"] as string ?? "legalModal";
+    var modalTitle = ViewData["ModalTitle"] as string ?? "Information";
+    var modalContent = ViewData["ModalContent"] as string ?? "";
+    var modalIcon = ViewData["ModalIcon"] as string ?? "fa-circle-info";
+}
+
+<div id="@modalId"
+     class="fixed inset-0 z-[100] hidden items-center justify-center p-4"
+     role="dialog" aria-modal="true">
+
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-navy/60 backdrop-blur-sm" data-modal-close></div>
+
+    <!-- Panel -->
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-navy text-gold flex items-center justify-center">
+                    <i class="fa-solid @modalIcon"></i>
+                </div>
+                <h2 class="text-lg font-bold text-navy">@modalTitle</h2>
+            </div>
+            <button type="button"
+                    class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition"
+                    data-modal-close
+                    aria-label="Close">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 overflow-y-auto text-sm text-slate-600 leading-relaxed space-y-4">
+            @Html.Raw(modalContent)
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end bg-slate-50">
+            <button type="button"
+                    class="bg-gold hover:bg-yellow-500 text-navy font-bold px-5 py-2 rounded-xl text-sm transition"
+                    data-modal-close>
+                Got it
+            </button>
+        </div>
+    </div>
+</div>

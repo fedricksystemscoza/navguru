@@ -1,0 +1,61 @@
+﻿@model NavGuru.ViewModels.EventQrViewModel
+@{
+    ViewData["Title"] = "Check-In QR";
+}
+
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-4">
+        <a asp-controller="Home" asp-action="Index"
+           class="text-xs font-semibold text-slate-500 hover:text-navy">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back to dashboard
+        </a>
+        <a asp-controller="Home" asp-action="MyQrCodes"
+           class="text-xs font-semibold text-navy hover:text-gold-dark">
+            All QR codes <i class="fa-solid fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+
+    <div class="card text-center">
+
+        @if (Model.AlreadyCheckedIn)
+        {
+            <div class="inline-flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2 mb-4">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="text-sm font-semibold">
+                    Already checked in at @Model.CheckedInAt?.ToLocalTime().ToString("HH:mm · dd MMM")
+                </span>
+            </div>
+        }
+
+        <p class="text-gold text-xs font-bold uppercase tracking-wider">Event Check-In</p>
+        <h1 class="text-xl font-bold text-navy mt-1">@Model.Event.Title</h1>
+        <p class="text-sm text-slate-500 mt-1">
+            <i class="fa-solid fa-clock mr-1"></i>@Model.Event.StartTime.ToString("ddd dd MMM · HH:mm")
+            <span class="mx-1.5">·</span>
+            <i class="fa-solid fa-location-dot mr-1"></i>@Model.Event.Location
+        </p>
+
+        @if (Model.Event.IsMandatory)
+        {
+            <span class="inline-block mt-3 bg-navy text-gold text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                Mandatory Event
+            </span>
+        }
+
+        <div class="bg-white p-6 rounded-2xl border-2 border-navy/10 inline-block mt-6">
+            <img src="@Model.QrImageDataUri" alt="Check-in QR" class="w-64 h-64 mx-auto" />
+        </div>
+
+        <p class="text-xs text-slate-500 mt-4 max-w-sm mx-auto">
+            Show this QR code to the admin when you arrive.<br>
+            It's unique to you and this event — don't share it.
+        </p>
+
+        <div class="border-t border-slate-100 mt-6 pt-4 text-left">
+            <p class="text-xs text-slate-400">
+                <i class="fa-solid fa-user mr-1"></i> @Model.UserFullName
+            </p>
+        </div>
+    </div>
+</div>

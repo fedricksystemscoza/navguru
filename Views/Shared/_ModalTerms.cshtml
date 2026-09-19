@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["ModalId"] = "modalTerms";
+    ViewData["ModalTitle"] = "Terms of Use";
+    ViewData["ModalIcon"] = "fa-file-contract";
+    ViewData["ModalContent"] = @"
+        <p><strong>Last updated: " + DateTime.Now.ToString("MMMM yyyy") + @"</strong></p>
+
+        <p>By using NavBuddy, you agree to these terms. Please read them carefully.</p>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Acceptable Use</h3>
+        <ul class='list-disc pl-5 space-y-1'>
+            <li>Use NavBuddy only for its intended purpose — orientation and student support.</li>
+            <li>Do not attempt to gain unauthorized access to other students' accounts or data.</li>
+            <li>Do not forge or share check-in QR codes with other students.</li>
+            <li>Do not misuse the FAQ assistant for unrelated queries.</li>
+        </ul>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Account Responsibility</h3>
+        <p>You are responsible for maintaining the confidentiality of your login credentials. Notify us immediately if you suspect unauthorized access.</p>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Content &amp; Availability</h3>
+        <p>We aim to keep NavBuddy running smoothly, but we don't guarantee uninterrupted access. Content may change without notice.</p>
+
+        <h3 class='font-bold text-navy mt-4 mb-1'>Termination</h3>
+        <p>We may suspend or terminate access if these terms are violated.</p>
+
+        <p class='mt-4'>Questions? Email <a href='mailto:terms@mandela.ac.za' class='text-navy font-semibold hover:text-gold-dark'>terms@mandela.ac.za</a>.</p>";
+}
+
+@await Html.PartialAsync("_LegalModal")
