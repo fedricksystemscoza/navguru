@@ -36,13 +36,41 @@ public class EmailService : IEmailService
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort,
-                _options.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, ct);
+            client.Timeout = 30_000;   // 30 seconds — fail fast
+
+            // Choose the right security mode based on config
+            var secureOptions = _options.SmtpPort == 465
+                ? SecureSocketOptions.SslOnConnect    // implicit SSL (port 465)
+                : _options.UseStartTls
+                    ? SecureSocketOptions.StartTls    // STARTTLS (port 587)
+                    : SecureSocketOptions.Auto;
+
+            _logger.LogInformation(
+                "Connecting to {Host}:{Port} using {Mode}",
+                _options.SmtpHost, _options.SmtpPort, secureOptions);
+
+            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, secureOptions, ct);
             await client.AuthenticateAsync(_options.Username, _options.Password, ct);
             await client.SendAsync(message, ct);
             await client.DisconnectAsync(true, ct);
 
             _logger.LogInformation("Email sent to {Email}: {Subject}", toEmail, subject);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Email send cancelled for {Email}", toEmail);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex,
+                "Email send timed out for {Email} — likely SMTP port {Port} blocked on this host. Try port 465 with SSL.",
+                toEmail, _options.SmtpPort);
+        }
+        catch (AuthenticationException ex)
+        {
+            _logger.LogError(ex,
+                "Email authentication failed for {Email} — check Email:Username and Email:Password.",
+                toEmail);
         }
         catch (Exception ex)
         {
@@ -54,9 +82,8 @@ public class EmailService : IEmailService
     {
         foreach (var (email, name) in recipients)
         {
-            // Sequential to avoid Gmail rate limits. Consider batching for larger lists.
             await SendAsync(email, name, subject, htmlBody, ct);
-            await Task.Delay(100, ct);   // small throttle
+            await Task.Delay(100, ct);
         }
     }
 
@@ -65,8 +92,15 @@ public class EmailService : IEmailService
         if (!_options.IsConfigured) return;
 
         using var client = new SmtpClient();
-        await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort,
-            _options.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, ct);
+        client.Timeout = 30_000;
+
+        var secureOptions = _options.SmtpPort == 465
+            ? SecureSocketOptions.SslOnConnect
+            : _options.UseStartTls
+                ? SecureSocketOptions.StartTls
+                : SecureSocketOptions.Auto;
+
+        await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, secureOptions, ct);
         await client.AuthenticateAsync(_options.Username, _options.Password, ct);
 
         foreach (var (email, name) in recipients)

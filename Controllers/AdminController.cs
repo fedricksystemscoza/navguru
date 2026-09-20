@@ -90,7 +90,80 @@ public class AdminController : Controller
         await _db.SaveChangesAsync();
 
         var eventId = ev.Id;
-        _ = Task.Run(() => NotifyStudentsOfNewEventAsync(eventId));
+        // Capture the scope factory while the request is still alive
+        var scopeFactory = HttpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+                // Reload event in this scope
+                var evReloaded = await db.OrientationEvents.FindAsync(eventId);
+                if (evReloaded is null) return;
+
+                var studentRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Student");
+                if (studentRole is null) return;
+
+                var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+                var adminIds = adminRole is null
+                    ? new List<string>()
+                    : await db.UserRoles.Where(ur => ur.RoleId == adminRole.Id).Select(ur => ur.UserId).ToListAsync();
+
+                var studentIds = await db.UserRoles
+                    .Where(ur => ur.RoleId == studentRole.Id)
+                    .Select(ur => ur.UserId)
+                    .ToListAsync();
+
+                var recipients = await db.Users
+                    .Where(u => studentIds.Contains(u.Id)
+                             && !adminIds.Contains(u.Id)
+                             && u.EmailNotifications
+                             && u.Email != null
+                             && u.Email != "")
+                    .ToListAsync();
+
+                Console.WriteLine($"[NavGuru] Event '{evReloaded.Title}' — notifying {recipients.Count} student(s)");
+
+                foreach (var s in recipients)
+                {
+                    try
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = s.Id,
+                            Title = $"New event: {evReloaded.Title}",
+                            Message = $"{evReloaded.StartTime:ddd dd MMM · HH:mm} · {evReloaded.Location}",
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        db.Notifications.Add(notification);
+                        await db.SaveChangesAsync();
+
+                        if (!string.IsNullOrWhiteSpace(s.Email))
+                        {
+                            var html = EventEmailTemplates.NewEventHtml(evReloaded, s.FullName ?? "");
+                            await email.SendAsync(s.Email, s.FullName ?? s.Email, $"New event: {evReloaded.Title}", html);
+                        }
+
+                        await Task.Delay(100);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[NavGuru] Notify failed for {s.Email}: {ex.Message}");
+                    }
+                }
+
+                Console.WriteLine($"[NavGuru] Done notifying for event '{evReloaded.Title}'");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NavGuru] Background notification task crashed: {ex}");
+            }
+        });
 
         TempData["Success"] = $"Event \"{ev.Title}\" created. Students are being notified.";
 
