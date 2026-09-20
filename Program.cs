@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -8,11 +9,22 @@ using NavGuru.Models;
 using NavGuru.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ---- Render port binding ----
 var port = Environment.GetEnvironmentVariable("PORT");
 if (port is not null)
 {
     builder.WebHost.UseUrls($"http://+:{port}");
 }
+
+// ---- Trust Render's reverse proxy ----
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // ---- Database ----
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=NavGuruDb.db";
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -34,7 +46,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// ---- Cookie auth redirect ----
+// ---- Cookie auth ----
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -42,11 +54,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
-// ═══════════════════════════════════════════════════════
-// MICROSOFT ENTRA ID — only register if ClientId is set
-// ═══════════════════════════════════════════════════════
+// ---- Entra ID (only if configured) ----
 var azureAdClientId = builder.Configuration["AzureAd:ClientId"];
 if (!string.IsNullOrWhiteSpace(azureAdClientId))
 {
@@ -60,6 +72,16 @@ if (!string.IsNullOrWhiteSpace(azureAdClientId))
 
             options.Events = new OpenIdConnectEvents
             {
+                OnRedirectToIdentityProvider = context =>
+                {
+                    // Force HTTPS in the redirect URI — Render terminates SSL at the proxy
+                    var uri = context.ProtocolMessage.RedirectUri;
+                    if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.ProtocolMessage.RedirectUri = "https://" + uri.Substring(7);
+                    }
+                    return Task.CompletedTask;
+                },
                 OnRemoteFailure = context =>
                 {
                     Console.WriteLine("=== OIDC REMOTE FAILURE ===");
@@ -71,7 +93,6 @@ if (!string.IsNullOrWhiteSpace(azureAdClientId))
                 OnTokenValidated = context =>
                 {
                     Console.WriteLine("=== TOKEN VALIDATED ===");
-                    Console.WriteLine($"SignInScheme in token validated: {context.Options.SignInScheme}");
                     return Task.CompletedTask;
                 }
             };
@@ -82,37 +103,55 @@ if (!string.IsNullOrWhiteSpace(azureAdClientId))
 else
 {
     Console.WriteLine("[NavGuru] Entra ID SSO disabled — AzureAd:ClientId not configured.");
-}  // ← THE CRITICAL LINE — tells M.I.W. not to use its own cookie
+}
 
 // ---- Typed configuration ----
 builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection(OpenAiOptions.SectionName));
 builder.Services.Configure<MapsOptions>(builder.Configuration.GetSection(MapsOptions.SectionName));
 builder.Services.Configure<CacheOptions>(builder.Configuration.GetSection(CacheOptions.SectionName));
 builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection(FeatureFlags.SectionName));
-builder.Services.Configure<EmailOptions>(
-    builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.Configure<QrOptions>(
-    builder.Configuration.GetSection(QrOptions.SectionName));
+builder.Services.Configure<QrOptions>(builder.Configuration.GetSection(QrOptions.SectionName));
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
-builder.Services.Configure<GrokOptions>(
-    builder.Configuration.GetSection(GrokOptions.SectionName));
+builder.Services.Configure<GrokOptions>(builder.Configuration.GetSection(GrokOptions.SectionName));
 
 // ---- Caching ----
 builder.Services.AddMemoryCache();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddHttpClient("Grok");
-// ---- MVC + App services ----
+
+// ---- MVC + Services ----
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<QrCodeService>();
-builder.Services.AddScoped<FaqService>();
 builder.Services.AddScoped<IStudentNumberGenerator, StudentNumberGenerator>();
 builder.Services.AddScoped<IFaqAssistantService, FaqAssistantService>();
+builder.Services.AddScoped<FaqService>();
 
 var app = builder.Build();
 
-// ---- Seeder ----
+// ---- FIRST middleware ----
+app.UseForwardedHeaders();
+
+// ---- Error handling + HTTPS ----
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Account}/{action=Login}/{id?}");
+
+// ---- Seeder (after middleware, before Run) ----
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -120,22 +159,8 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureCreated();
     else
         db.Database.Migrate();
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
-
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
-}
-
-app.UseStaticFiles();
-app.UseRouting();
-app.UseAuthentication();     // ← must come before UseAuthorization
-app.UseAuthorization();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
