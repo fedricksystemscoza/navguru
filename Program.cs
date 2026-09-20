@@ -45,39 +45,44 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // ═══════════════════════════════════════════════════════
-// MICROSOFT ENTRA ID — SINGLE registration
+// MICROSOFT ENTRA ID — only register if ClientId is set
 // ═══════════════════════════════════════════════════════
-builder.Services.AddAuthentication()
-    .AddMicrosoftIdentityWebApp(options =>
-    {
-        builder.Configuration.GetSection("AzureAd").Bind(options);
-
-        // ═══════════════════════════════════════════════════════
-        // These THREE settings must all line up:
-        // ═══════════════════════════════════════════════════════
-        options.SignInScheme = "Identity.External";   // where the OIDC handler writes
-        options.ResponseType = "code";                // authorization code flow
-
-        options.Events = new OpenIdConnectEvents
+var azureAdClientId = builder.Configuration["AzureAd:ClientId"];
+if (!string.IsNullOrWhiteSpace(azureAdClientId))
+{
+    builder.Services.AddAuthentication()
+        .AddMicrosoftIdentityWebApp(options =>
         {
-            OnRemoteFailure = context =>
+            builder.Configuration.GetSection("AzureAd").Bind(options);
+
+            options.SignInScheme = "Identity.External";
+            options.ResponseType = "code";
+
+            options.Events = new OpenIdConnectEvents
             {
-                Console.WriteLine("=== OIDC REMOTE FAILURE ===");
-                Console.WriteLine($"Error: {context.Failure?.Message}");
-                context.HandleResponse();
-                context.Response.Redirect("/Account/Login?error=oidc_failed");
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                Console.WriteLine("=== TOKEN VALIDATED ===");
-                Console.WriteLine($"SignInScheme in token validated: {context.Options.SignInScheme}");
-                return Task.CompletedTask;
-            }
-        };
-    },
-    openIdConnectScheme: "MicrosoftEntra",
-    cookieScheme: null);   // ← THE CRITICAL LINE — tells M.I.W. not to use its own cookie
+                OnRemoteFailure = context =>
+                {
+                    Console.WriteLine("=== OIDC REMOTE FAILURE ===");
+                    Console.WriteLine($"Error: {context.Failure?.Message}");
+                    context.HandleResponse();
+                    context.Response.Redirect("/Account/Login?error=oidc_failed");
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = context =>
+                {
+                    Console.WriteLine("=== TOKEN VALIDATED ===");
+                    Console.WriteLine($"SignInScheme in token validated: {context.Options.SignInScheme}");
+                    return Task.CompletedTask;
+                }
+            };
+        },
+        openIdConnectScheme: "MicrosoftEntra",
+        cookieScheme: null);
+}
+else
+{
+    Console.WriteLine("[NavGuru] Entra ID SSO disabled — AzureAd:ClientId not configured.");
+}  // ← THE CRITICAL LINE — tells M.I.W. not to use its own cookie
 
 // ---- Typed configuration ----
 builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection(OpenAiOptions.SectionName));
